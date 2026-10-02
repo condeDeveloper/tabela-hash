@@ -1,0 +1,47 @@
+name: testes
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  testes:
+    runs-on: ${{ matrix.so }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        so: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # O juiz e o Dictionary do .NET, e a conferencia e depois de CADA operacao,
+      # nao no fim. A diferenca importa: uma tabela com a invariante quebrada
+      # continua respondendo a tudo, so que errado, e comparar so no fim diz que
+      # ha um defeito sem dizer quando ele nasceu.
+      #
+      # A mesma bateria roda sobre as CINCO implementacoes pelo mesmo contrato, e
+      # os casos que importam nao aparecem por sorteio: remover do meio de uma
+      # cadeia com chaves escolhidas para colidirem de proposito (o defeito
+      # classico do enderecamento aberto), o vai e vem da mesma chave 20 mil vezes
+      # (que e o que enche de lapides), e crescer de 2 para 5.000 elementos
+      # (porque o redimensionamento recalcula cada posicao, e e ali que um erro de
+      # mascara faz elementos sumirem calados).
+      - name: testes
+        run: dotnet test testes/TabelaHash.Testes/TabelaHash.Testes.csproj -c Release --nologo -v q
+
+      # As medidas rodam para REGISTRAR numeros. Nao ha asseveracao de tempo.
+      - name: avalanche das funcoes de espalhamento
+        run: dotnet run --project ferramentas/Medidor/Medidor.csproj -c Release --nologo -- avalanche
+
+      - name: sondas por busca contra a formula de livro
+        run: dotnet run --project ferramentas/Medidor/Medidor.csproj -c Release --nologo -- ocupacao
+
+      - name: robin hood, a media e a cauda
+        run: dotnet run --project ferramentas/Medidor/Medidor.csproj -c Release --nologo -- cauda
